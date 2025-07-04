@@ -675,6 +675,10 @@ func call[Q, A any](ctx context.Context, cli *Client, method string, uri string,
 	if err != nil {
 		return answer, fmt.Errorf("read body: %w", err)
 	}
+
+	fmt.Printf("response: %v", resp)
+	fmt.Printf("status code: %v, Created state: %v", resp.StatusCode, http.StatusCreated)
+
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		if body != nil && json.Valid(body) {
 			var e respError
