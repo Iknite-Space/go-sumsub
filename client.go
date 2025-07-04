@@ -623,6 +623,8 @@ func (c *Client) CreateApplicant(ctx context.Context, req CreateApplicantRequest
 		},
 	)
 
+	fmt.Println("response from create applicant: ", resp)
+
 	if err != nil {
 		return CreateApplicantResponse{}, fmt.Errorf("call: %w", err)
 	}
@@ -665,6 +667,9 @@ func call[Q, A any](ctx context.Context, cli *Client, method string, uri string,
 	req.Header.Set("X-App-Access-Sig", cli.signer.Sign(now, method, uri, payload))
 
 	resp, err := cli.cli.Do(req)
+
+	fmt.Printf("response: %v", resp)
+
 	if err != nil {
 		return answer, fmt.Errorf("do: %w", err)
 	}
@@ -698,6 +703,8 @@ func call[Q, A any](ctx context.Context, cli *Client, method string, uri string,
 			return answer, fmt.Errorf("json: umarshal: %w", err)
 		}
 	}
+
+	fmt.Println("answer: ", answer)
 
 	return answer, nil
 }
