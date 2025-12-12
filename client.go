@@ -179,6 +179,7 @@ type (
 		ExternalUserID string
 		Email          string
 		Phone          string
+		SourceKey      string
 	}
 
 	CreateApplicantResponse struct {
@@ -379,6 +380,7 @@ type (
 		ExternalUserID string `json:"externalUserId"`
 		Email          string `json:"email,omitempty"`
 		Phone          string `json:"phone,omitempty"`
+		SourceKey      string `json:"source_key,omitempty"`
 	}
 
 	respCreateApplicant struct {
@@ -620,6 +622,7 @@ func (c *Client) CreateApplicant(ctx context.Context, req CreateApplicantRequest
 			ExternalUserID: req.ExternalUserID,
 			Email:          req.Email,
 			Phone:          req.Phone,
+			SourceKey:      req.SourceKey,
 		},
 	)
 
