@@ -152,3 +152,37 @@ func TestTransportModels(t *testing.T) {
 		})
 	}
 }
+
+
+func TestSubmitTransaction(t *testing.T) {
+	cases :=  []struct {
+		msg json.RawMessage
+		model any
+	}{
+		{
+			msg: json.RawMessage(`{
+			"id": "",
+			"review": {
+				"reviewResult":{
+				"reviewAnswer": "",
+				"reviewRejectType": ""
+					}
+				}
+
+			}`),
+			model: respSubmitTransaction{},
+
+		},
+	}
+
+	for i, c := range cases {
+		t.Run(fmt.Sprintf("case %d (%T)", i, c.model), func(t *testing.T){
+			require.True(t, json.Valid(c.msg), "invalid json")
+			err := json.Unmarshal(c.msg, &c.model)
+			require.NoError(t, err)
+			msg, err := json.Marshal(c.model)
+			require.NoError(t, err)
+			require.JSONEq(t, string(c.msg), string(msg))
+		})
+	}
+}

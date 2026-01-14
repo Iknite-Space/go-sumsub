@@ -179,7 +179,21 @@ type (
 		ExternalUserID string
 		Email          string
 		Phone          string
-		SourceKey      string
+	}
+
+	SubmitTransactionRequest struct {
+		TxnID string
+		ZoneID string 
+		Type string
+		Info Info
+		Applicant Applicant
+		Counterparty Counterparty 
+		ApplicantID string
+	}
+
+	SubmitTransactionResponse struct {
+		ID string
+		Review Review
 	}
 
 	CreateApplicantResponse struct {
@@ -201,6 +215,29 @@ type (
 		DOB         time.Time
 		Country     string
 		IDDocs      []IDDoc
+
+		Direction string
+		Amount float64
+		CurrencyCode string
+		Type string
+	}
+
+	Applicant struct {
+		Type string
+		ExternalUserID string
+		FullName string
+	}
+
+	// Info struct {
+	// 	Direction string
+	// 	Amount string
+	// 	CurrencyCode string
+	// 	Type string
+	// }
+
+	Counterparty struct {
+    Type string
+		FullName string
 	}
 
 	IDDoc struct {
@@ -234,6 +271,8 @@ type (
 		CreateDate         time.Time
 		ReviewStatus       string
 		Priority           int
+
+		ReviewResult ReviewResult
 	}
 
 	RequiredIDDocs struct {
@@ -380,8 +419,41 @@ type (
 		ExternalUserID string `json:"externalUserId"`
 		Email          string `json:"email,omitempty"`
 		Phone          string `json:"phone,omitempty"`
-		SourceKey      string `json:"source_key,omitempty"`
 	}
+
+	reqSubmitTransaction struct {
+		TxnID string `json:"txnId"`
+		ZoneID string `json:"zoneId"`
+		Type string `json:"type"`
+		Info struct {
+			Direction string `json:"direction"`
+			Amount float64 `json:"amount"`
+			CurrencyCode string `json:"currencyCode"`
+			Type string `json:"type"`
+			} `json:"info"`
+		Applicant struct {
+			Type string `json:"type"`
+			ExternalUserID string `json:"externalUserId"`
+			FullName string `json:"fullName"`
+			} `json:"applicant"`
+		Counterparty struct {
+				Type string `json:"type"`
+				FullName string `json:"fullName"`
+				} `json:"counterparty"`
+		ApplicantID string `json:"applicantId"`
+
+	}
+
+	respSubmitTransaction struct {
+		ID string `json:"id"`
+		Review struct {
+			ReviewResult struct {
+				ReviewAnswer string `json:"reviewAnswer"`
+				ReviewRejectType string `json:"reviewRejectType"`
+			} `json:"reviewResult"`
+		} `json:"review"`
+	}
+	
 
 	respCreateApplicant struct {
 		ID string `json:"id"`
@@ -622,7 +694,6 @@ func (c *Client) CreateApplicant(ctx context.Context, req CreateApplicantRequest
 			ExternalUserID: req.ExternalUserID,
 			Email:          req.Email,
 			Phone:          req.Phone,
-			SourceKey:      req.SourceKey,
 		},
 	)
 
@@ -634,6 +705,66 @@ func (c *Client) CreateApplicant(ctx context.Context, req CreateApplicantRequest
 		ID: resp.ID,
 	}, nil
 }
+
+// SubmitTransaction Use this method to submit a transaction on sumsub API
+// https://docs.sumsub.com/reference/submit-transaction-for-existing-applicant
+
+func (c *Client) SubmitTransaction(ctx context.Context, req SubmitTransactionRequest) (SubmitTransactionResponse, error) {
+
+	resp, err := call[reqSubmitTransaction, respSubmitTransaction] (ctx, c, 
+		http.MethodPost,
+		fmt.Sprintf("/resources/applicants/%s/kyt/txns/-/data", req.ApplicantID),
+		reqSubmitTransaction{
+			TxnID: req.TxnID,
+			ZoneID: req.ZoneID,
+			Type: "finance",
+			Info: struct {
+				Direction string `json:"direction"`
+				Amount float64 `json:"amount"`
+				CurrencyCode string `json:"currencyCode"` 
+				Type string `json:"type"`
+				}{
+				Direction: req.Info.Direction,
+				Amount: req.Info.Amount,
+				CurrencyCode: req.Info.CurrencyCode,
+				Type: req.Info.Type,
+			},
+			Applicant: struct { 
+				Type string `json:"type"` 
+			  ExternalUserID string `json:"externalUserId"`
+			  FullName string `json:"fullName"`
+			}{
+				Type: req.Applicant.Type,
+				ExternalUserID: req.Applicant.ExternalUserID,
+				FullName: req.Applicant.FullName,
+			},
+			Counterparty: struct { 
+				Type string `json:"type"` 
+				FullName string `json:"fullName"`}{
+				Type: req.Counterparty.Type,
+				FullName: req.Counterparty.FullName,
+
+			},
+			ApplicantID: req.ApplicantID,
+
+		},		
+	)
+	if err != nil{
+		return SubmitTransactionResponse{}, fmt.Errorf("call: %w", err)
+	}
+
+	return SubmitTransactionResponse{
+		ID: resp.ID,
+		Review: Review {
+			ReviewResult: ReviewResult {
+		ReviewAnswer: resp.Review.ReviewResult.ReviewAnswer,
+		ReviewRejectType: resp.Review.ReviewResult.ReviewRejectType,
+	},
+		},
+		
+	}, nil
+}
+
 
 // Health Use this method to check the operational status of the API
 // https://docs.sumsub.com/reference/review-api-health
@@ -678,10 +809,6 @@ func call[Q, A any](ctx context.Context, cli *Client, method string, uri string,
 	if err != nil {
 		return answer, fmt.Errorf("read body: %w", err)
 	}
-
-	fmt.Printf("response: %v", resp)
-	fmt.Printf("status code: %v, Created state: %v", resp.StatusCode, http.StatusCreated)
-
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		if body != nil && json.Valid(body) {
 			var e respError
